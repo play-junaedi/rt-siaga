@@ -12,6 +12,7 @@ Aplikasi sosial untuk rt
 - Anouncement
 - Organzation
 - Ai Chat
+- Push App Notification
 
 ## Web Adminitrator Features
 - Manage Citizenship acc
