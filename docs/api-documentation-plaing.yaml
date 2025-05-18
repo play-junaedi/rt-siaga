@@ -1,0 +1,517 @@
+openapi: 3.0.0
+info:
+  title: RT-Siaga API Documentation
+  description: API untuk aplikasi sosial lingkungan RT, digunakan oleh Mobile App dan Web Admin Dashboard.
+  version: "1.0.0"
+  contact:
+    name: Developer Team
+    email: dev@rt-siaga.id
+
+servers:
+  - url: https://api.rt-siaga.id/v1 
+    description: Production server
+  - url: http://localhost:3000/v1
+    description: Development server
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+tags:
+  - name: Authentication
+    description: Login, registrasi, verifikasi pengguna
+  - name: SOS
+    description: Fitur darurat untuk meminta bantuan
+  - name: Announcement
+    description: Pengumuman dari admin/RT ke warga
+  - name: Forum QnA
+    description: Diskusi antar warga
+  - name: CCTV
+    description: Streaming kamera lingkungan
+  - name: Organization
+    description: Struktur organisasi RT/RW
+  - name: AI Chat
+    description: Interaksi dengan chatbot berbasis AI
+  - name: User Management
+    description: Manajemen akun warga untuk admin
+  - name: Notification
+    description: Notifikasi real-time untuk pengguna
+
+paths:
+
+  # === AUTHENTICATION ===
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Registrasi akun warga baru
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                nik:
+                  type: string
+                phone:
+                  type: string
+                password:
+                  type: string
+                address:
+                  type: string
+              example:
+                name: "Budi Santoso"
+                nik: "1234567890123456"
+                phone: "+628123456789"
+                password: "secret123"
+                address: "Jl. Merdeka No. 123"
+      responses:
+        '201':
+          description: Registrasi berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user_id:
+                    type: string
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login pengguna
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+                password:
+                  type: string
+              example:
+                phone: "+628123456789"
+                password: "secret123"
+      responses:
+        '200':
+          description: Token login
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  role:
+                    type: string
+                    enum: ["warga", "rt", "rw", "admin"]
+
+  # === SOS ===
+  /sos/alert:
+    post:
+      tags:
+        - SOS
+      summary: Kirim sinyal SOS ke admin dan tetangga
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                latitude:
+                  type: number
+                longitude:
+                  type: number
+                description:
+                  type: string
+              example:
+                latitude: -6.200000
+                longitude: 106.816666
+                description: "Ada orang mencurigakan di depan rumah."
+      responses:
+        '200':
+          description: SOS alert berhasil dikirim
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  alert_id:
+                    type: string
+
+  /sos/history:
+    get:
+      tags:
+        - SOS
+      summary: Riwayat SOS yang dikirim user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Daftar riwayat SOS
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    timestamp:
+                      type: string
+                      format: date-time
+                    location:
+                      type: object
+                      properties:
+                        lat:
+                          type: number
+                        lng:
+                          type: number
+                    status:
+                      type: string
+                      enum: ["pending", "processed", "done"]
+
+  # === ANNOUNCEMENT ===
+  /announcement:
+    get:
+      tags:
+        - Announcement
+      summary: Dapatkan daftar pengumuman terbaru
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Daftar pengumuman
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    title:
+                      type: string
+                    content:
+                      type: string
+                    author:
+                      type: string
+                    timestamp:
+                      type: string
+                      format: date-time
+    post:
+      tags:
+        - Announcement
+      summary: Buat pengumuman (RT/Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                scheduled_at:
+                  type: string
+                  format: date-time
+              example:
+                title: "Gotong Royong Minggu Depan"
+                content: "Silakan hadir pada hari Minggu pukul 07.00 WIB."
+                scheduled_at: "2025-04-06T07:00:00Z"
+      responses:
+        '201':
+          description: Pengumuman dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  message:
+                    type: string
+
+  # === FORUM QnA ===
+  /forum/question:
+    post:
+      tags:
+        - Forum QnA
+      summary: Ajukan pertanyaan di forum
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+              example:
+                title: "Cara bayar listrik prabayar?"
+                content: "Bagaimana cara isi ulang token listrik prabayar di wilayah ini?"
+      responses:
+        '201':
+          description: Pertanyaan berhasil diposting
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  question_id:
+                    type: string
+                  message:
+                    type: string
+
+  /forum/questions:
+    get:
+      tags:
+        - Forum QnA
+      summary: Lihat semua pertanyaan
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Daftar pertanyaan
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    title:
+                      type: string
+                    content:
+                      type: string
+                    asked_by:
+                      type: string
+                    answered:
+                      type: boolean
+
+  /forum/answer:
+    post:
+      tags:
+        - Forum QnA
+      summary: Jawab pertanyaan dari user lain
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                question_id:
+                  type: string
+                content:
+                  type: string
+              example:
+                question_id: "uuid-1234"
+                content: "Anda bisa membayar via minimarket terdekat."
+      responses:
+        '201':
+          description: Jawaban berhasil dikirim
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  answer_id:
+                    type: string
+                  message:
+                    type: string
+
+  # === CCTV ===
+  /cctv/sources:
+    get:
+      tags:
+        - CCTV
+      summary: Dapatkan daftar kamera CCTV
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Daftar kamera CCTV
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    rtsp_url:
+                      type: string
+                    location:
+                      type: string
+
+  # === ORGANIZATION ===
+  /organization/structure:
+    get:
+      tags:
+        - Organization
+      summary: Ambil struktur organisasi RT/RW
+      responses:
+        '200':
+          description: Struktur organisasi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    position:
+                      type: string
+                    person_name:
+                      type: string
+                    contact:
+                      type: string
+
+  # === AI CHAT ===
+  /ai/chat:
+    post:
+      tags:
+        - AI Chat
+      summary: Kirim pesan ke chatbot AI
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+              example:
+                message: "Cara buat surat keterangan usaha?"
+      responses:
+        '200':
+          description: Balasan dari AI
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reply:
+                    type: string
+
+  # === USER MANAGEMENT (ADMIN ONLY) ===
+  /admin/users:
+    get:
+      tags:
+        - User Management
+      summary: Daftar semua warga
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Daftar pengguna
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    phone:
+                      type: string
+                    role:
+                      type: string
+                      enum: ["warga", "rt", "rw", "admin"]
+
+  /admin/users/{id}/block:
+    put:
+      tags:
+        - User Management
+      summary: Blokir akun warga
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Akun berhasil diblokir
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  # === NOTIFICATION ===
+  /notifications:
+    get:
+      tags:
+        - Notification
+      summary: Dapatkan notifikasi pengguna
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Daftar notifikasi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    title:
+                      type: string
+                    content:
+                      type: string
+                    type:
+                      type: string
+                      enum: ["sos", "announcement", "qna", "other"]
+                    read:
+                      type: boolean
